@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OTA Compset Benchmark</title>
+<meta name="description" content="Interactive benchmark of hotel performance on an online travel agency versus each hotel's competitive set. Runs on synthetic data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: an analyst's workbench. A quiet title strip, a sticky filter bar, then
+   summary (tiles + trend) above detail (the ranked scorecard, then one hotel).
+   Color jobs: slate-green neutrals for furniture, one teal for interaction and
+   the hotel's own series, and a blue/orange pair for ahead/behind (safe for
+   red-green color blindness), never used for anything else. */
+:root{
+  --bg:#F1F4F3; --surface:#FFFFFF; --surface-2:#F6F8F7;
+  --ink:#16211F; --ink2:#3C4A47; --muted:#667572;
+  --line:#D6DEDB; --grid:#E4E9E7; --axis:#A5B2AE;
+  --accent:#0B6A63; --accent-strong:#08524D; --accent-wash:rgba(11,106,99,.09); --accent-line:rgba(11,106,99,.38);
+  --good:#2C68B0; --good-ink:#20528E; --good-wash:rgba(44,104,176,.12);
+  --bad:#C4522B; --bad-ink:#9E3E1C; --bad-wash:rgba(196,82,43,.13);
+  --neutral:#A2ADAA; --even-wash:rgba(120,135,131,.16);
+  --bar:#B7CAC6; --bar-ink:#0B6A63; --s1:#0B6A63; --s2:#7E8C89; --area:rgba(11,106,99,.10);
+  --hover:rgba(22,33,31,.04); --shadow:0 1px 2px rgba(22,33,31,.06),0 6px 20px rgba(22,33,31,.05);
+  --tip-shadow:0 8px 24px rgba(22,33,31,.16); --scrim:rgba(10,16,15,.42);
+  --font-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1514; --surface:#161F1E; --surface-2:#1B2524;
+  --ink:#E4ECEA; --ink2:#B5C2BF; --muted:#8A9895;
+  --line:#2A3634; --grid:#222E2C; --axis:#4C5A57;
+  --accent:#4DB2A8; --accent-strong:#7CCBC2; --accent-wash:rgba(77,178,168,.12); --accent-line:rgba(77,178,168,.45);
+  --good:#6FA2DE; --good-ink:#93BBEA; --good-wash:rgba(111,162,222,.16);
+  --bad:#E3875F; --bad-ink:#F0A585; --bad-wash:rgba(227,135,95,.16);
+  --neutral:#5E6D6A; --even-wash:rgba(140,155,151,.16);
+  --bar:#35524E; --bar-ink:#4DB2A8; --s1:#4DB2A8; --s2:#98A6A3; --area:rgba(77,178,168,.14);
+  --hover:rgba(228,236,234,.05); --shadow:0 1px 2px rgba(0,0,0,.3); --tip-shadow:0 8px 24px rgba(0,0,0,.45); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E1514; --surface:#161F1E; --surface-2:#1B2524;
+  --ink:#E4ECEA; --ink2:#B5C2BF; --muted:#8A9895;
+  --line:#2A3634; --grid:#222E2C; --axis:#4C5A57;
+  --accent:#4DB2A8; --accent-strong:#7CCBC2; --accent-wash:rgba(77,178,168,.12); --accent-line:rgba(77,178,168,.45);
+  --good:#6FA2DE; --good-ink:#93BBEA; --good-wash:rgba(111,162,222,.16);
+  --bad:#E3875F; --bad-ink:#F0A585; --bad-wash:rgba(227,135,95,.16);
+  --neutral:#5E6D6A; --even-wash:rgba(140,155,151,.16);
+  --bar:#35524E; --bar-ink:#4DB2A8; --s1:#4DB2A8; --s2:#98A6A3; --area:rgba(77,178,168,.14);
+  --hover:rgba(228,236,234,.05); --shadow:0 1px 2px rgba(0,0,0,.3); --tip-shadow:0 8px 24px rgba(0,0,0,.45); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--font-body);-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{text-wrap:balance}
+h2{font-family:var(--font-display);font-size:17px;font-weight:600;margin:0;letter-spacing:.005em;color:var(--ink)}
+.wrap,.mast,.pagefoot{max-width:1380px;margin-inline:auto;padding-inline:20px}
+
+/* title strip */
+.masthead{background:var(--surface);border-bottom:1px solid var(--line)}
+.mast{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:14px}
+.mark{flex:none;width:40px;height:40px;display:block}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.titles{min-width:0}
+.titles h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.1;letter-spacing:-.005em}
+.titles p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.mast .spacer{flex:1}
+.mast .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent-line);color:var(--accent-strong);background:var(--accent-wash);border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.pill::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.ghost{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--ink2);font-size:12.5px}
+.ghost:hover{background:var(--hover);color:var(--ink)}
+
+/* filter bar */
+.filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding-block:12px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.f{display:flex;flex-direction:column;gap:4px;min-width:150px}
+.f label{font-family:var(--font-display);font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.f select,.f input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 9px;min-height:34px;max-width:100%;text-overflow:ellipsis}
+.f select:hover,.f input:hover{border-color:var(--axis)}
+.f input{min-width:220px}
+.f.grow{flex:0 1 400px;max-width:400px;min-width:0}
+.filters .count{color:var(--muted);align-self:center;margin-left:auto;white-space:nowrap;font-size:13px;font-variant-numeric:tabular-nums}
+.combo{position:relative}
+.combo input{width:100%}
+.combolist{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:100%;width:max-content;max-width:min(560px,90vw);max-height:320px;overflow:auto;margin:0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--tip-shadow)}
+.combolist li{display:flex;align-items:baseline;gap:9px;padding:6px 8px;border-radius:5px;cursor:pointer;font-size:13px}
+.combolist li b{min-width:54px;color:var(--accent);font-family:var(--font-mono);font-weight:500;font-size:12px}
+.combolist li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.combolist li i{font-style:normal;color:var(--muted);font-size:11.5px;white-space:nowrap;flex:none;max-width:42%;overflow:hidden;text-overflow:ellipsis}
+.combolist li.on{background:var(--accent-wash)}
+.combolist li.none{color:var(--muted);cursor:default}
+
+.wrap{padding-block:0 28px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-top:14px;box-shadow:var(--shadow);min-width:0}
+.card .hint{color:var(--muted);font-size:12.5px;margin-top:3px;max-width:90ch}
+.sectlabel{font-family:var(--font-display);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.sectlabel span{letter-spacing:0;text-transform:none;font-family:var(--font-body);font-weight:400}
+
+/* metric tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:980px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:460px){.tiles{grid-template-columns:1fr}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px 12px;text-align:left;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow);transition:border-color .12s,background .12s}
+.tile:hover{border-color:var(--axis)}
+.tile.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,var(--shadow)}
+.tile .t{display:flex;justify-content:space-between;gap:8px;font-family:var(--font-display);font-size:13px;font-weight:600;color:var(--ink2);letter-spacing:.02em}
+.tile .t em{font-style:normal;font-weight:500;color:var(--muted);font-family:var(--font-body);font-size:12px}
+.tile.on .t{color:var(--accent-strong)}
+.tile .v{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.tile .v b{font-family:var(--font-display);font-size:34px;font-weight:700;line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.tile .v small{font-size:12.5px;color:var(--ink2)}
+.tile .d{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tile .bar{display:flex;gap:2px;height:8px;margin-top:8px}
+.tile .bar i{display:block;height:100%;border-radius:2px}
+.tile .bar i.g{background:var(--good)} .tile .bar i.e{background:var(--neutral)} .tile .bar i.b{background:var(--bad)}
+.tile .sel{font-size:11.5px;color:var(--accent);margin-top:6px;min-height:1.2em}
+
+/* scorecard table */
+.tablewrap{overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:6px;margin-top:12px}
+table.sc{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+table.sc th,table.sc td{padding:7px 9px;border-bottom:1px solid var(--grid);white-space:nowrap;text-align:right}
+table.sc th{position:sticky;top:0;background:var(--surface-2);z-index:2;font-family:var(--font-display);font-weight:600;color:var(--ink2);cursor:pointer;user-select:none;font-size:12.5px;letter-spacing:.02em;border-bottom:1px solid var(--line)}
+table.sc th:hover{color:var(--ink)}
+table.sc th.l,table.sc td.l{text-align:left}
+table.sc th.first,table.sc td.first{border-left:1px solid var(--grid)}
+table.sc th.sorted{color:var(--accent)}
+table.sc tbody tr{cursor:pointer}
+table.sc tbody tr:hover td{background:var(--hover)}
+table.sc td.name{white-space:normal;min-width:240px;position:sticky;left:0;background:var(--surface);z-index:1}
+table.sc th.l:first-child{position:sticky;left:0;z-index:3}
+table.sc td.name .code{display:inline-block;min-width:54px;margin-right:8px;font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--muted)}
+table.sc td.name .lnk{color:var(--ink);text-decoration:underline;text-decoration-color:transparent;text-underline-offset:3px;transition:text-decoration-color .12s}
+table.sc tbody tr:hover td.name .lnk{text-decoration-color:var(--accent);color:var(--accent-strong)}
+table.sc td.dim{color:var(--muted)}
+table.sc td.spark{padding-block:3px}
+table.sc td.spark svg{display:block;margin-left:auto}
+table.sc td.go,table.sc th.go{width:28px;text-align:center;color:var(--muted);font-size:18px;line-height:1;padding-inline:4px 8px;cursor:default}
+table.sc tbody tr:hover td.go{color:var(--accent)}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:4px;font-weight:600;min-width:76px;justify-content:flex-end;font-variant-numeric:tabular-nums}
+.chip.g{background:var(--good-wash);color:var(--good-ink)} .chip.b{background:var(--bad-wash);color:var(--bad-ink)} .chip.e{background:var(--even-wash);color:var(--ink2)} .chip.n{color:var(--muted)}
+.legendrow{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;color:var(--ink2);font-size:12.5px;margin:10px 0 0}
+.legendrow .chip{min-width:0}
+
+/* hotel detail */
+.dhead{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.dhead>div{min-width:0}
+.dhead h2{font-size:22px;font-weight:700}
+.dhead .meta{color:var(--ink2);font-size:13px;margin-top:2px}
+.dhead .meta b{color:var(--ink);font-weight:600}
+.dhead .meta .mono{font-family:var(--font-mono);font-size:12px}
+.backbtn{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 11px;cursor:pointer}
+.backbtn:hover{background:var(--hover)}
+#backBtn{color:var(--accent-strong);border-color:var(--accent-line);background:var(--accent-wash);font-weight:600}
+.tabs{display:flex;align-items:center;gap:4px;margin:16px 0 0;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:4px}
+.tabs button{background:none;border:0;border-radius:5px;padding:6px 14px;cursor:pointer;color:var(--ink2);font-weight:500}
+.tabs button:hover{background:var(--hover);color:var(--ink)}
+.tabs button.on{background:var(--surface);color:var(--accent-strong);font-weight:600;box-shadow:0 0 0 1px var(--line),0 1px 2px rgba(0,0,0,.06)}
+#pdfBtn{margin-left:auto;background:var(--accent);color:var(--surface);border:0;border-radius:5px;padding:7px 14px;font-weight:600;font-size:13px;line-height:1.2;cursor:pointer;white-space:nowrap}
+#pdfBtn:hover{background:var(--accent-strong)}
+#pdfBtn[disabled]{background:var(--neutral);cursor:default}
+#pdfBtn::before{content:'\2193';margin-right:7px;font-weight:700}
+@media (max-width:640px){#pdfBtn{width:100%;margin:4px 0 0}}
+.summary{border-left:3px solid var(--accent);background:var(--accent-wash);border-radius:0 6px 6px 0;padding:10px 14px;margin:14px 0 4px;font-size:13.5px;max-width:120ch}
+.summary b{font-weight:600}
+.legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin:10px 0 2px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:16px;height:3px;border-radius:2px}
+.legend i.bar{height:10px;width:10px;border-radius:2px}
+svg.chart{display:block;overflow:visible;max-width:100%}
+svg text{font-family:var(--font-body);fill:var(--muted)}
+.ptitle{font-family:var(--font-display);font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:12px 0 0}
+.sec{border-top:1px solid var(--line);padding:14px 0 6px;margin-top:14px}
+.sec .sech{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.sec .sech b{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--ink)}
+.sec .sech span{font-size:12.5px;color:var(--muted)}
+.sec .ptitle:first-of-type{margin-top:6px}
+.tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:var(--tip-shadow);border-radius:6px;padding:8px 10px;font-size:12.5px;z-index:50;display:none;min-width:180px;font-variant-numeric:tabular-nums}
+.tip b{font-weight:600}
+.tip .row{display:flex;justify-content:space-between;gap:14px}
+.tip .row i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.tip .g{color:var(--good-ink)} .tip .b{color:var(--bad-ink)}
+table.vals{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums;margin-top:4px}
+table.vals th,table.vals td{padding:5px 5px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap;font-size:12px}
+table.vals th{color:var(--ink2);font-weight:600;font-family:var(--font-display)}
+table.vals tr.yr th{text-align:center;color:var(--ink);border-bottom:0;padding-bottom:0;letter-spacing:.04em}
+table.vals tr.yr th+th{border-left:1px solid var(--grid)}
+table.vals td.l,table.vals th.l{text-align:left;color:var(--ink2)}
+table.vals td.g{color:var(--good-ink)} table.vals td.b{color:var(--bad-ink)}
+.mixgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px;margin-top:14px}
+.mix{border:1px solid var(--line);border-radius:8px;padding:12px 12px 10px;background:var(--surface-2);min-width:0}
+.mix .h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.mix .h b{font-family:var(--font-display);font-weight:600;font-size:14px}
+.mix .h span{font-size:12.5px;color:var(--ink2)}
+.mix .foot{font-size:12px;color:var(--muted);margin-top:4px}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.modal{position:fixed;inset:0;background:var(--scrim);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+.modal .box{background:var(--surface);color:var(--ink);border-radius:10px;max-width:760px;max-height:85vh;overflow:auto;padding:22px 26px;font-size:13.5px;box-shadow:var(--tip-shadow)}
+.modal .box h2{margin-top:16px}
+.modal .box ul{padding-left:18px}
+.kbd{font-size:12px;color:var(--muted)}
+.pagefoot{padding-block:14px 30px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);display:flex;gap:6px 18px;flex-wrap:wrap;justify-content:space-between}
+@media (max-width:700px){.filters{position:static}.f{min-width:0;flex:1 1 140px}.f input{min-width:0}.f.grow{flex:1 1 100%;max-width:none}.tile .v b{font-size:28px}.filters .count{margin-left:0}.mast .meta{width:100%}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+#printDoc{display:none}
+#printDoc svg text{font-family:helvetica,Arial,sans-serif} /* svg2pdf maps only the PDF core fonts */
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="mast">
+    <div class="brand">
+    <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="39" height="39" rx="8" fill="var(--accent-wash)" stroke="var(--accent-line)"/>
+      <rect x="8" y="11" width="24" height="5" rx="1.5" fill="var(--accent)"/>
+      <rect x="8" y="19" width="17" height="5" rx="1.5" fill="var(--s2)"/>
+      <rect x="8" y="27" width="21" height="5" rx="1.5" fill="var(--good)"/>
+    </svg>
+    <div class="titles">
+      <h1>OTA Compset Benchmark</h1>
+      <p>How each hotel is growing on an online travel agency versus its competitive set</p>
+    </div>
+    </div>
+    <span class="spacer"></span>
+    <div class="meta">
+      <span class="pill" title="Every hotel, brand, manager and number on this page is invented">Synthetic data</span>
+      <span id="asof"></span>
+      <button class="ghost" id="aboutBtn" type="button">How to read this</button>
+      <button class="ghost" id="themeBtn" type="button" aria-label="Switch color theme">Theme</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="filters" id="filters">
+    <div class="f"><label for="fMgr">Portfolio manager</label><select id="fMgr"></select></div>
+    <div class="f grow"><label for="fHotelInput">Hotel</label>
+      <select id="fHotel" aria-label="Hotel"></select>
+      <div class="combo" id="fHotelCombo" hidden>
+        <input id="fHotelInput" type="search" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fHotelList">
+        <ul class="combolist" id="fHotelList" role="listbox" hidden></ul>
+      </div>
+    </div>
+    <div class="f"><label for="fMonth">Scorecard month</label><select id="fMonth"></select></div>
+    <div class="count" id="count"></div>
+  </div>
+
+  <section id="scorecard">
+    <div class="sectlabel">Hotels ahead of compset <span>Pick a metric to switch the trend and the scorecard to it</span></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="card" id="trendcard">
+      <h2 id="trendTitle">Share of hotels ahead of compset, by month</h2>
+      <div class="hint" id="trendHint"></div>
+      <div id="trendchart"></div>
+    </div>
+    <div class="card">
+      <h2 id="scTitle">Portfolio scorecard</h2>
+      <div class="hint">Hotel vs compset for the selected month, the gap over the last 12 months, and how many of those months the hotel was ahead. <b>Click a hotel to open it</b>; click a column heading to sort. Worst gap first by default.</div>
+      <div class="tablewrap"><table class="sc" id="scTable"></table></div>
+      <div class="legendrow"><span class="chip g">▲ ahead</span> gap above +1 pt <span class="chip e">● even</span> within ±1 pt <span class="chip b">▼ behind</span> gap below −1 pt <span class="chip n">—</span> no data</div>
+    </div>
+  </section>
+
+  <section id="detail" hidden>
+    <div class="card">
+      <div class="dhead">
+        <button class="backbtn" id="backBtn" type="button">← Back to scorecard</button>
+        <div>
+          <h2 id="dName"></h2>
+          <div class="meta" id="dMeta"></div>
+        </div>
+      </div>
+      <div class="tabs" id="tabs"></div>
+      <div id="pdfHolder" hidden><button id="pdfBtn" type="button">Download PDF</button></div>
+      <div id="dBody"></div>
+    </div>
+  </section>
+</div>
+
+<footer class="pagefoot">
+  <span>Synthetic data. Every hotel, brand, code, manager and figure on this page is invented; no real hotel or company is represented.</span>
+  <span>Built by Libardo Lambrano · <a href="https://github.com/llambrano/hotel-ota-compset-benchmark">Source on GitHub</a></span>
+</footer>
+
+<div id="printDoc" aria-hidden="true"></div>
+<div class="tip" id="tip"></div>
+
+<div class="modal" id="about">
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <h2 id="aboutTitle" style="margin-top:0">How to read this dashboard</h2>
+    <p>An OTA's monthly production extract gives each hotel's own results but reports its compset only as <b>year-over-year growth</b> (and as level gaps for share metrics). So every comparison here is <b>hotel growth vs compset growth</b>: if the hotel grew room nights 8% and its compset grew 3%, the gap is +5 points and the hotel is gaining share of the channel.</p>
+    <h2>Scorecard</h2>
+    <ul>
+      <li><b>Hotel YoY / Compset YoY</b>: the month's year-over-year change for the hotel and for its compset.</li>
+      <li><b>Gap</b>: hotel YoY minus compset YoY, in percentage points. Blue above +1, orange below −1, gray in between.</li>
+      <li><b>12-month gap</b>: the gap in each of the last 12 months, oldest to newest.</li>
+      <li><b>Months ahead</b>: how many of those months the gap was above +1 pt.</li>
+      <li><b>Sponsored Listings</b>: bookings from paid placements as a share of the hotel's OTA bookings. Here the gap is the hotel's share minus the compset's share, in points.</li>
+    </ul>
+    <h2>Hotel detail</h2>
+    <ul>
+      <li>The top panel is the hotel's monthly value (room nights, revenue, ADR or sponsored share).</li>
+      <li>The middle panel shows the two growth lines: hotel YoY (solid) and compset YoY (dashed).</li>
+      <li>The <b>gap strip</b> underneath is the difference between them, month by month.</li>
+      <li>The <b>Mix</b> tab covers the other compset comparisons: package, mobile, international, cancellation, refundable and Visibility Boost share (in points), plus length of stay and booking window (in days).</li>
+    </ul>
+    <h2>Things to know</h2>
+    <ul>
+      <li>A hotel that opened during the window has no prior year, so it has no YoY and no gap until it laps its opening.</li>
+      <li>Very large YoY swings usually mean a small base. Check the monthly values before reading too much into them.</li>
+      <li id="aboutMissing"></li>
+    </ul>
+    <p class="kbd">All data on this page is synthetic, generated by <code>scripts/make_synthetic.py</code>. The production version reads the OTA's monthly partner extracts with <code>scripts/build_dashboard.py</code>.</p>
+    <p><button class="backbtn" id="aboutClose" type="button">Close</button></p>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+(function(){
+if(!DATA){document.body.innerHTML='<p style="padding:40px">No data embedded. Run scripts/build_synthetic.py to build the page.</p>';return;}
+const $=s=>document.querySelector(s);
+const MONTHS=DATA.months, N=MONTHS.length, H=DATA.hotels;
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const mlab=ym=>MN[+ym.slice(5,7)-1]+' '+ym.slice(2,4);
+const mlong=ym=>['January','February','March','April','May','June','July','August','September','October','November','December'][+ym.slice(5,7)-1]+' '+ym.slice(0,4);
+$('#asof').textContent='Data through '+mlab(DATA.asOf).replace(' ',' 20')+' · '+N+' mo';
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+// ---------- metric definitions ----------
+// gap for growth metrics = (yoy - cs)*100 points ; for share metrics gap = cs (already pp)
+const METRICS={
+  nrn:{label:'Room Nights',kind:'growth',v:'nrn',yoy:'nrn_yoy',cs:'nrn_cs',fmt:v=>fmtInt(v),axis:v=>fmtIntShort(v),unit:''},
+  rev:{label:'Revenue',kind:'growth',v:'rev',yoy:'rev_yoy',cs:'rev_cs',fmt:v=>'$'+fmtInt(v),axis:v=>'$'+fmtIntShort(v),unit:''},
+  adr:{label:'ADR',kind:'growth',v:'adr',yoy:'adr_yoy',cs:'adr_cs',fmt:v=>'$'+fmtNum(v,0),axis:v=>'$'+fmtIntShort(v),unit:''},
+  spon:{label:'Sponsored Listings',kind:'share',v:'spon',yoy:'spon_yoy',cs:'spon_cs',fmt:v=>fmtPctPlain(v==null?null:v*100,1),axis:v=>fmtNum(v*100,0)+'%',unit:'share'}
+};
+const MIX=[
+  {k:'pkg',label:'Package share',kind:'share'},{k:'mob',label:'Mobile share',kind:'share'},
+  {k:'intl',label:'International share',kind:'share'},{k:'cxl',label:'Cancellation share',kind:'share'},
+  {k:'ref',label:'Refundable rate plans share',kind:'share'},{k:'boost',label:'Visibility Boost share',kind:'share'},
+  {k:'los',label:'Length of stay',kind:'days'},{k:'bw',label:'Booking window',kind:'days'}
+];
+function gap(h,m,i){const d=h.d, M=METRICS[m]; if(M.kind==='growth'){const a=d[M.yoy]?d[M.yoy][i]:null,b=d[M.cs]?d[M.cs][i]:null; return (a==null||b==null)?null:(a-b)*100;} const c=d[M.cs]?d[M.cs][i]:null; return c==null?null:c;}
+const cls=(g,t)=>{t=t==null?1:t;return g==null?'n':g>t?'g':g<-t?'b':'e';};
+const arrow=(g,t)=>{t=t==null?1:t;return g==null?'—':g>t?'▲':g<-t?'▼':'●';};
+const aheadCount=(h,m)=>{let a=0,n=0;for(let i=0;i<N;i++){const g=gap(h,m,i);if(g!=null){n++;if(g>1)a++;}}return [a,n];};
+
+// ---------- formatting ----------
+function fmtInt(v){return v==null?'—':Math.round(v).toLocaleString('en-US');}
+function fmtNum(v,d){return v==null?'—':v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtIntShort(v){if(v==null)return '';const a=Math.abs(v);if(a>=1e6)return (v/1e6).toFixed(1).replace(/\.0$/,'')+'M';if(a>=1e3)return (v/1e3).toFixed(a>=1e5?0:1).replace(/\.0$/,'')+'K';return Math.round(v).toString();}
+function fmtPct(v,d){return v==null?'—':(v>0?'+':'')+fmtNum(v,d)+'%';}
+function fmtPctPlain(v,d){return v==null?'—':fmtNum(v,d)+'%';}
+function fmtPts(v,d){if(v==null)return '—';d=d==null?1:d;const k=Math.pow(10,d);v=Math.round(v*k)/k||0;return (v>0?'+':'')+fmtNum(v,d)+' pt';}
+function fmtDays(v){if(v==null)return '—';v=Math.round(v*10)/10||0;return (v>0?'+':'')+fmtNum(v,1)+' d';}
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---------- filters ----------
+const uniq=(arr)=>[...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+const state={mgr:'',sreg:'',brand:'',country:'',q:'',month:N-1,sort:{key:'gap',dir:1},tab:'nrn',sc:'nrn',hotel:null};
+function fillSelect(id,opts,allLabel,val){const s=$(id);s.innerHTML='<option value="">'+esc(allLabel)+'</option>'+opts.map(o=>'<option value="'+esc(o)+'">'+esc(o)+'</option>').join('');s.value=val||'';}
+const mgrs=uniq(H.map(h=>h.mgr));
+fillSelect('#fMgr',mgrs,'All managers');
+$('#fMonth').innerHTML=MONTHS.map((m,i)=>'<option value="'+i+'">'+mlong(m)+'</option>').join('');$('#fMonth').value=N-1;
+// Hotel picker: a native dropdown inside a portfolio (~20 hotels), a type-ahead across
+// All managers, where scrolling 1,400+ options to reach Z is not workable.
+const byCode=(a,b)=>((a.code||'~~~~~')+' '+a.name).localeCompare((b.code||'~~~~~')+' '+b.name);
+const hotelLabel=h=>(h.code?h.code+' \u00b7 ':'')+h.name;
+const COMBO={items:[],active:-1,open:false};
+function comboMatches(q){
+  const t=(q||'').trim().toLowerCase();
+  if(!t) return H.slice().sort(byCode).slice(0,80);
+  const out=[];
+  for(const h of H){
+    const code=(h.code||'').toLowerCase(), name=(h.name||'').toLowerCase(), mk=(h.market||'').toLowerCase();
+    let r=-1;
+    if(code===t.toLowerCase()||h.id===t) r=0; else if(code.startsWith(t)) r=1;
+    else if(name.startsWith(t)) r=2; else if(name.includes(t)) r=3; else if(mk.includes(t)) r=4;
+    if(r>=0) out.push([r,h]);
+  }
+  out.sort((a,b)=>a[0]-b[0]||byCode(a[1],b[1]));
+  return out.map(x=>x[1]).slice(0,80);
+}
+function comboRender(q){
+  const list=$('#fHotelList');
+  COMBO.items=comboMatches(q); COMBO.active=COMBO.items.length?0:-1;
+  list.innerHTML=COMBO.items.length
+    ? COMBO.items.map((h,i)=>'<li role="option" data-id="'+h.id+'" class="'+(i===0?'on':'')+'" aria-selected="'+(i===0)+'"><b>'+esc(h.code||'\u2014')+'</b><span>'+esc(h.name)+'</span><i>'+esc(h.market||'')+'</i></li>').join('')
+    : '<li class="none">No hotel matches that</li>';
+  list.querySelectorAll('li[data-id]').forEach(li=>li.addEventListener('mousedown',e=>{e.preventDefault();comboPick(li.dataset.id);}));
+}
+function comboOpen(q){const inp=$('#fHotelInput');$('#fHotelList').hidden=false;inp.setAttribute('aria-expanded','true');COMBO.open=true;comboRender(q==null?inp.value:q);}
+function comboClose(){$('#fHotelList').hidden=true;$('#fHotelInput').setAttribute('aria-expanded','false');COMBO.open=false;}
+function comboMove(d){
+  if(!COMBO.open){comboOpen('');return;}
+  const lis=$('#fHotelList').querySelectorAll('li[data-id]'); if(!lis.length)return;
+  COMBO.active=(COMBO.active+d+lis.length)%lis.length;
+  lis.forEach((li,i)=>{li.classList.toggle('on',i===COMBO.active);li.setAttribute('aria-selected',i===COMBO.active);});
+  lis[COMBO.active].scrollIntoView({block:'nearest'});
+}
+function comboPick(eg){const h=H.find(x=>x.id===eg);if(!h)return;$('#fHotelInput').value=hotelLabel(h);comboClose();openHotel(eg);}
+function comboClear(){state.hotel=null;location.hash='';fillHotelList();renderDetail();}
+function fillHotelList(){
+  const useCombo=!state.mgr, sel=$('#fHotel'), combo=$('#fHotelCombo');
+  sel.hidden=useCombo; combo.hidden=!useCombo;
+  if(useCombo){
+    const inp=$('#fHotelInput');
+    inp.value=state.hotel?hotelLabel(state.hotel):'';
+    inp.placeholder='Type a hotel code, name or market\u2026 ('+H.length.toLocaleString('en-US')+' hotels)';
+    comboClose();
+  }else{
+    const base=H.filter(h=>h.mgr===state.mgr).slice().sort(byCode);
+    sel.innerHTML='<option value="">All hotels in this portfolio ('+base.length+')</option>'
+      +base.map(h=>'<option value="'+h.id+'">'+esc(hotelLabel(h))+'</option>').join('');
+    sel.value=state.hotel&&base.some(h=>h.id===state.hotel.id)?state.hotel.id:'';
+  }
+}
+function filtered(){return H.filter(h=>(!state.mgr||h.mgr===state.mgr));}
+function bind(id,key){$(id).addEventListener('change',e=>{state[key]=e.target.value;render();});}
+$('#fMgr').addEventListener('change',e=>{state.mgr=e.target.value;if(state.hotel&&state.mgr&&state.hotel.mgr!==state.mgr){state.hotel=null;location.hash='';}render();renderDetail();});
+$('#fHotel').addEventListener('change',e=>{if(e.target.value)openHotel(e.target.value);else{state.hotel=null;location.hash='';renderDetail();}});
+$('#fHotelInput').addEventListener('focus',e=>{e.target.select();comboOpen(e.target.value);});
+$('#fHotelInput').addEventListener('input',e=>comboOpen(e.target.value));
+$('#fHotelInput').addEventListener('blur',()=>setTimeout(comboClose,130));
+$('#fHotelInput').addEventListener('search',e=>{if(!e.target.value)comboClear();});
+$('#fHotelInput').addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){e.preventDefault();comboMove(1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();comboMove(-1);}
+  else if(e.key==='Enter'){if(COMBO.open&&COMBO.items[COMBO.active]){e.preventDefault();comboPick(COMBO.items[COMBO.active].id);}}
+  else if(e.key==='Escape'){comboClose();e.target.blur();}
+});
+$('#fMonth').addEventListener('change',e=>{state.month=+e.target.value;render();});
+function refreshOptions(){fillHotelList();}
+
+// ---------- tiles ----------
+function renderTiles(list){
+  const i=state.month; const el=$('#tiles'); let html='';
+  for(const m of ['nrn','rev','adr','spon']){
+    let g=0,e=0,b=0,n=0;for(const h of list){const x=gap(h,m,i);if(x==null)continue;n++;if(x>1)g++;else if(x<-1)b++;else e++;}
+    const pct=n?Math.round(g/n*100):null;
+    const seg=(c,k)=>k?'<i class="'+c+'" style="flex:'+k+'"></i>':'';
+    html+='<button type="button" class="tile'+(state.sc===m?' on':'')+'" data-m="'+m+'" aria-pressed="'+(state.sc===m)+'"><div class="t">'+METRICS[m].label+'<em>'+mlab(MONTHS[i])+'</em></div><div class="v">'+(n?'<b>'+pct+'%</b><small>'+g+' of '+n+' hotels ahead</small>':'<b>—</b>')+'</div><div class="bar">'+(n?seg('g',g)+seg('e',e)+seg('b',b):'')+'</div><div class="d">'+(n?(g+' ahead · '+e+' even · '+b+' behind'):'no data')+'</div><div class="sel">'+(state.sc===m?'Showing below':'')+'</div></button>';
+  }
+  el.innerHTML=html;
+  el.querySelectorAll('.tile').forEach(b=>b.addEventListener('click',()=>{state.sc=b.dataset.m;state.tab=b.dataset.m;render();}));
+}
+
+// ---------- scorecard table ----------
+const COLS=[{key:'name',label:'Hotel',l:true},{key:'mgr',label:'Portfolio manager',l:true},{key:'market',label:'Market',l:true}];
+function rowVals(h){const i=state.month,d=h.d,o={h:h,name:h.name,mgr:h.mgr,market:h.market,code:h.code,id:h.id,brand:h.brand,tier:h.tier};
+  for(const m of ['nrn','rev','adr','spon']){const M=METRICS[m];o['v_'+m]=d[M.v]?d[M.v][i]:null;o['y_'+m]=d[M.yoy]?d[M.yoy][i]:null;o['c_'+m]=d[M.cs]?d[M.cs][i]:null;o['gap_'+m]=gap(h,m,i);const [a,n]=aheadCount(h,m);o['ah_'+m]=n?a:null;o['ahn_'+m]=n;}
+  return o;}
+function renderTable(list){
+  const rows=list.map(rowVals).map(r=>({...r,name_sort:(r.code||'~')+' '+r.name}));
+  const {key,dir}=state.sort;
+  rows.sort((a,b)=>{const k=key==='name'?'name_sort':key==='gap'?'gap_'+state.sc:key;let x=a[k],y=b[k];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;if(typeof x==='string')return x.localeCompare(y)*dir;return (x-y)*dir;});
+  const m=state.sc, M=METRICS[m];
+  const isSorted=k=>state.sort.key===k||(state.sort.key==='gap'&&k==='gap_'+m);
+  const th=(k,l,c)=>'<th class="sub one '+(c||'')+(isSorted(k)?' sorted':'')+'" data-k="'+k+'">'+l+(isSorted(k)?(state.sort.dir>0?' ↑':' ↓'):'')+'</th>';
+  const showMgr=!state.mgr;
+  let html='<thead><tr>'+th('name','Hotel','l')+(showMgr?th('mgr','Portfolio manager','l'):'');
+  html+=th('v_'+m,M.kind==='share'?'Sponsored share':M.label,'first')+th('y_'+m,M.kind==='share'?'Share YoY (pts)':'Hotel YoY')+th('c_'+m,M.kind==='share'?'vs Compset (pts)':'Compset YoY')+th('gap_'+m,'Gap (pts)')+th('sp','12-month gap')+th('ah_'+m,'Months ahead')+'<th class="sub one go" data-k="none"></th>';
+  html+='</tr></thead><tbody>';
+  for(const r of rows){
+    html+='<tr data-id="'+r.id+'"><td class="l name" title="'+esc((r.code?r.code+' · ':'')+r.name)+'">'+(r.code?'<span class="code">'+esc(r.code)+'</span>':'<span class="code nocode">—</span>')+'<span class="lnk">'+esc(r.name)+'</span></td>'+(showMgr?'<td class="l dim">'+esc(r.mgr||'—')+'</td>':'');
+    const g=r['gap_'+m];
+    html+='<td class="first">'+M.fmt(r['v_'+m])+'</td>';
+    if(M.kind==='growth'){html+='<td>'+fmtPct(r['y_'+m]==null?null:r['y_'+m]*100,1)+'</td><td>'+fmtPct(r['c_'+m]==null?null:r['c_'+m]*100,1)+'</td>';}
+    else{html+='<td>'+fmtPts(r['y_'+m])+'</td><td>'+fmtPts(r['c_'+m])+'</td>';}
+    html+='<td><span class="chip '+cls(g)+'">'+arrow(g)+' '+(g==null?'':fmtPts(g))+'</span></td><td class="spark">'+spark(r.h,m)+'</td><td class="dim">'+(r['ah_'+m]==null?'—':r['ah_'+m]+' of '+r['ahn_'+m])+'</td><td class="go" title="Open hotel">›</td>';
+    html+='</tr>';
+  }
+  html+='</tbody>';
+  const t=$('#scTable');t.innerHTML=html;
+  t.querySelectorAll('th.sub').forEach(el=>el.addEventListener('click',()=>{let k=el.dataset.k;if(k==='none'||k==='sp')return;if(k==='gap_'+state.sc)k='gap';if(state.sort.key===k)state.sort.dir*=-1;else state.sort={key:k,dir:1};renderTable(filtered());}));
+  t.querySelectorAll('tbody tr').forEach(el=>el.addEventListener('click',()=>openHotel(el.dataset.id)));
+}
+
+// 12-month gap sparkline for a scorecard row: one bar per month, blue above +1, orange below -1
+function spark(h,m){
+  const W=108,Hh=22,mid=Hh/2,bw=W/N-2,g=MONTHS.map((_,i)=>gap(h,m,i)),mx=Math.max(10,...g.filter(v=>v!=null).map(Math.abs));
+  let out='<svg width="'+W+'" height="'+Hh+'" viewBox="0 0 '+W+' '+Hh+'" aria-hidden="true"><line x1="0" x2="'+W+'" y1="'+mid+'" y2="'+mid+'" stroke="'+css('--axis')+'" stroke-width="1"/>';
+  g.forEach((v,i)=>{if(v==null)return;const hh=Math.max(1.5,Math.min(mid-1,Math.abs(v)/mx*(mid-1)));const c=v>1?css('--good'):v<-1?css('--bad'):css('--neutral');
+    out+='<rect x="'+(i*(W/N)+1)+'" y="'+(v>=0?mid-hh:mid)+'" width="'+bw+'" height="'+hh+'" rx="1" fill="'+c+'"'+(i===state.month?'':' opacity=".55"')+'/>';});
+  return out+'</svg>';
+}
+// ---------- SVG helpers ----------
+const NS='http://www.w3.org/2000/svg';
+function svgEl(tag,attrs,txt){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(txt!=null)e.textContent=txt;return e;}
+function niceScale(min,max,ticks){if(min===max){min-=1;max+=1;}const span=max-min;const raw=span/ticks;const p=Math.pow(10,Math.floor(Math.log10(raw)));const r=raw/p;const step=(r<1.5?1:r<3?2:r<7?5:10)*p;const lo=Math.floor(min/step)*step,hi=Math.ceil(max/step)*step;const t=[];for(let v=lo;v<=hi+step/2;v+=step)t.push(+v.toFixed(10));return {lo,hi,t};}
+const tip=$('#tip');
+function showTip(html,x,y){tip.innerHTML=html;tip.style.display='block';const w=tip.offsetWidth,hh=tip.offsetHeight;let L=x+14,T=y+14;if(L+w>innerWidth-8)L=x-w-14;if(T+hh>innerHeight-8)T=y-hh-14;tip.style.left=L+'px';tip.style.top=T+'px';}
+function hideTip(){tip.style.display='none';}
+
+// generic panel: bars (single series) or lines (n series) with hairline grid, zero baseline, hover crosshair
+function panel(opts){
+  // opts: {width, height, series:[{vals,color,type:'bar'|'line'|'gapbar'}], fmt, axisFmt, includeZero, labels(bool), tipRows(i)->html, thr}
+  const W=Math.max(240,opts.width||600), Hh=opts.height, padL=opts.padL||58, padR=opts.padR!=null?opts.padR:(opts.labels?44:16), padT=14, padB=opts.showX===false?8:36, pw=W-padL-padR, ph=Hh-padT-padB, thr=opts.thr==null?1:opts.thr;
+  const svg=svgEl('svg',{class:'chart',viewBox:'0 0 '+W+' '+Hh,width:W,height:Hh});
+  svg.style.height=Hh+'px';svg.style.width=W+'px';
+  const all=[];opts.series.forEach(s=>s.vals.forEach(v=>{if(v!=null)all.push(v);}));
+  if(!all.length){svg.appendChild(svgEl('text',{x:W/2,y:Hh/2,'text-anchor':'middle','font-size':13,fill:css('--muted')},'No data'));return svg;}
+  let mn=Math.min(...all),mx=Math.max(...all);
+  if(opts.includeZero!==false){mn=Math.min(mn,0);mx=Math.max(mx,0);}else{const span=(mx-mn)||Math.abs(mn)*0.1||1;mn=mn-span*0.12;mx=mx+span*0.04;}
+  if(mn===mx){mx=mn+1;}
+  const sc=niceScale(mn,mx,opts.ticks||4);
+  if(opts.includeZero===false){sc.lo=mn;sc.t=sc.t.filter(t=>t>=mn&&t<=sc.hi);}
+  const y=v=>padT+ph-(v-sc.lo)/(sc.hi-sc.lo)*ph;
+  const x=i=>padL+(i+0.5)*pw/N;
+  const slot=pw/N;
+  if(opts.includeZero===false)svg.appendChild(svgEl('line',{x1:padL,x2:W-padR,y1:y(sc.lo),y2:y(sc.lo),stroke:css('--axis'),'stroke-width':1,'vector-effect':'non-scaling-stroke'}));
+  for(const t of sc.t){svg.appendChild(svgEl('line',{x1:padL,x2:W-padR,y1:y(t),y2:y(t),stroke:t===0?css('--axis'):css('--grid'),'stroke-width':1,'vector-effect':'non-scaling-stroke'}));svg.appendChild(svgEl('text',{x:padL-8,y:y(t)+4,'text-anchor':'end','font-size':11},opts.axisFmt(t)));}
+  if(opts.showX!==false){const step=slot<28?4:slot<44?3:slot<60?2:1;MONTHS.forEach((m,i)=>{
+      const marked=opts.markIndex===i;
+      if((N-1-i)%step===0||marked){const a={x:x(i),y:Hh-20,'text-anchor':'middle','font-size':11};
+        if(marked){a['font-weight']=700;a.fill=css('--accent');}
+        svg.appendChild(svgEl('text',a,MN[+m.slice(5,7)-1]));}});
+    // year once, centered under its months, with a hairline divider between years
+    const yrs=[];MONTHS.forEach((m,i)=>{const yv=m.slice(0,4);if(yrs.length&&yrs[yrs.length-1].y===yv)yrs[yrs.length-1].end=i;else yrs.push({y:yv,start:i,end:i});});
+    yrs.forEach((o,k)=>{svg.appendChild(svgEl('text',{x:(x(o.start)+x(o.end))/2,y:Hh-4,'text-anchor':'middle','font-size':11,'font-weight':600,fill:css('--ink')},o.y));if(k>0){const xb=padL+o.start*slot;svg.appendChild(svgEl('line',{x1:xb,x2:xb,y1:Hh-30,y2:Hh-2,stroke:css('--grid'),'stroke-width':1,'vector-effect':'non-scaling-stroke'}));}});}
+  if(opts.markIndex!=null&&opts.markIndex>=0){const mx=x(opts.markIndex);
+    svg.appendChild(svgEl('line',{x1:mx,x2:mx,y1:padT,y2:padT+ph,stroke:css('--accent'),'stroke-width':1,'stroke-dasharray':'3 3',opacity:'.6','vector-effect':'non-scaling-stroke'}));}
+  const g=svgEl('g',{});svg.appendChild(g);const endLabels=[];
+  for(const s of opts.series){
+    if(s.type==='bar'||s.type==='gapbar'){
+      const bw=Math.min(slot*(s.type==='gapbar'?0.5:0.62),s.type==='gapbar'?40:52);
+      const base=sc.lo>0?sc.lo:(sc.hi<0?sc.hi:0);
+      s.vals.forEach((v,i)=>{if(v==null)return;const y0=y(base),y1=y(v);const top=Math.min(y0,y1),hgt=Math.max(1,Math.abs(y1-y0));
+        const col=s.type==='gapbar'?(v>thr?css('--good'):v<-thr?css('--bad'):css('--neutral')):s.color;
+        const r=Math.min(4,hgt/2,bw/2);
+        // rounded at data end, flat at baseline
+        let d;const X=x(i)-bw/2;
+        if(v>=base){d=`M${X},${y0} V${y1+r} Q${X},${y1} ${X+r},${y1} H${X+bw-r} Q${X+bw},${y1} ${X+bw},${y1+r} V${y0} Z`;}
+        else{d=`M${X},${y0} V${y1-r} Q${X},${y1} ${X+r},${y1} H${X+bw-r} Q${X+bw},${y1} ${X+bw},${y1-r} V${y0} Z`;}
+        const p=svgEl('path',{d,fill:col});g.appendChild(p);
+        if(s.type==='bar'&&opts.labels&&i===N-1){svg.appendChild(svgEl('text',{x:x(i),y:v>=0?top-5:top+hgt+13,'text-anchor':'middle','font-size':11,'font-weight':600,fill:css('--ink')},opts.fmt(v)));}
+      });
+    }else{
+      let d='',started=false;
+      s.vals.forEach((v,i)=>{if(v==null){started=false;return;}d+=(started?'L':'M')+x(i)+','+y(v)+' ';started=true;});
+      const la={d,fill:'none',stroke:s.color,'stroke-width':s.width||2,'stroke-linejoin':'round','stroke-linecap':'round','vector-effect':'non-scaling-stroke'};
+      if(s.dash)la['stroke-dasharray']='7 4';
+      if(s.area){const pts=s.vals.map((v,i)=>v==null?null:[x(i),y(v)]).filter(Boolean);if(pts.length>1){const yb=y(Math.max(sc.lo,Math.min(sc.hi,s.areaBase==null?sc.lo:s.areaBase)));g.appendChild(svgEl('path',{d:'M'+pts[0][0]+','+yb+' '+pts.map(p=>'L'+p[0]+','+p[1]).join(' ')+' L'+pts[pts.length-1][0]+','+yb+' Z',fill:css('--area'),stroke:'none'}));}}
+      g.appendChild(svgEl('path',la));
+      s.vals.forEach((v,i)=>{if(v==null)return;g.appendChild(svgEl('circle',{cx:x(i),cy:y(v),r:3.5,fill:s.color,stroke:css('--surface'),'stroke-width':2}));});
+      // endpoint label
+      const last=[...s.vals].map((v,i)=>[v,i]).filter(a=>a[0]!=null).pop();
+      if(last&&opts.labels){endLabels.push({x:x(last[1])+8,y:y(last[0])+4,t:(s.name?s.name+' ':'')+opts.fmt(last[0]),c:s.color});}
+    }
+  }
+  endLabels.sort((a,b)=>a.y-b.y);for(let k=1;k<endLabels.length;k++){if(endLabels[k].y-endLabels[k-1].y<13)endLabels[k].y=endLabels[k-1].y+13;}
+  endLabels.forEach(l=>svg.appendChild(svgEl('text',{x:l.x,y:l.y,'font-size':11,'font-weight':700,fill:l.c||css('--ink')},l.t)));
+  // hover layer
+  const cross=svgEl('line',{y1:padT,y2:padT+ph,stroke:css('--axis'),'stroke-width':1,'vector-effect':'non-scaling-stroke',style:'display:none'});svg.appendChild(cross);
+  const hit=svgEl('rect',{x:padL,y:padT,width:pw,height:ph,fill:'transparent'});svg.appendChild(hit);
+  hit.addEventListener('mousemove',ev=>{const r=svg.getBoundingClientRect();const px=(ev.clientX-r.left)/r.width*W;let i=Math.floor((px-padL)/slot);i=Math.max(0,Math.min(N-1,i));cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.style.display='';showTip(opts.tipRows(i),ev.clientX,ev.clientY);});
+  hit.addEventListener('mouseleave',()=>{cross.style.display='none';hideTip();});
+  return svg;
+}
+
+// ---------- detail view ----------
+const PRINTING={on:false};
+const PDFBTN=$('#pdfBtn');
+function openHotel(eg){state.hotel=H.find(h=>h.id===eg)||null;location.hash=state.hotel?'h'+eg:'';fillHotelList();renderDetail();}
+$('#backBtn').addEventListener('click',()=>{state.hotel=null;location.hash='';fillHotelList();renderDetail();});
+window.addEventListener('hashchange',()=>{const m=location.hash.match(/^#h(\d+)$/);const eg=m?m[1]:null;if(eg!==(state.hotel&&state.hotel.id)){state.hotel=eg?H.find(h=>h.id===eg)||null:null;fillHotelList();renderDetail();}});
+function renderDetail(){
+  const h=state.hotel;
+  $('#detail').hidden=!h;$('#scorecard').hidden=!!h;$('#fMonth').parentElement.style.display=h?'none':'';
+  if(PDFBTN&&h)PDFBTN.title='Download this hotel\u2019s benchmark report as a PDF';
+  if(!h)return;
+  $('#dName').textContent=h.name;
+  $('#dMeta').innerHTML=[h.code?'<b class="mono">'+esc(h.code)+'</b>':'',esc(h.brand),esc(h.market),esc(h.country),h.mgr?'Portfolio manager: <b>'+esc(h.mgr)+'</b>'+(h.tier?' · '+esc(h.tier):''):'Unassigned','OTA ID <span class="mono">'+esc(h.id)+'</span>'].filter(Boolean).join(' · ');
+  const tabs=[['nrn','Room Nights'],['rev','Revenue'],['adr','ADR'],['spon','Sponsored'],['mix','Mix']];
+  $('#tabs').innerHTML=tabs.map(t=>'<button class="'+(state.tab===t[0]?'on':'')+'" data-t="'+t[0]+'">'+t[1]+'</button>').join('');
+  $('#tabs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.tab=b.dataset.t;renderDetail();}));
+  $('#tabs').appendChild(PDFBTN);
+  const body=$('#dBody');body.innerHTML='';
+  if(state.tab==='mix')return renderMix(h,body);
+  const m=state.tab,M=METRICS[m],d=h.d;
+  const vals=d[M.v]||[],yoy=(d[M.yoy]||[]).map(v=>v==null?null:(M.kind==='growth'?v*100:v)),cs=(d[M.cs]||[]).map(v=>v==null?null:(M.kind==='growth'?v*100:v));
+  const gaps=MONTHS.map((_,i)=>gap(h,m,i));
+  // for share metrics the report gives 'vs compset' as a level gap, so the compset share is hotel share minus that gap
+  const csShare=M.kind==='share'?vals.map((v,i)=>(v==null||cs[i]==null)?null:v-cs[i]/100):null;
+  const lineA=M.kind==='growth'?yoy:vals.map(v=>v==null?null:v*100), lineB=M.kind==='growth'?cs:csShare.map(v=>v==null?null:v*100);
+  const fL=v=>M.kind==='growth'?fmtPct(v,1):fmtPctPlain(v,1);
+  // summary
+  const [a,n]=aheadCount(h,m);const behind=gaps.filter(g=>g!=null&&g<-1).length;
+  const gl=gaps[N-1],gp=gaps[N-2];
+  let sum='<b>'+esc(M.label)+':</b> ';
+  if(n){sum+='ahead of compset in <b>'+a+' of the last '+n+'</b> months'+(behind?', behind in '+behind:'')+'. ';
+    if(gl!=null)sum+='Latest month ('+mlab(MONTHS[N-1])+'): '+(gl>1?'<b>ahead by '+fmtPts(gl)+'</b>':gl<-1?'<b>behind by '+fmtNum(Math.abs(gl),1)+' pt</b>':'<b>even with compset</b>')+(gp!=null?(Math.abs(gl-gp)>=2?(gl>gp?', improving':', worsening')+' vs prior month':', similar to prior month'):'')+'.';
+    const recent=gaps.slice(-3).filter(v=>v!=null),early=gaps.slice(0,3).filter(v=>v!=null);
+    if(recent.length&&early.length){const ra=recent.reduce((s,v)=>s+v,0)/recent.length,ea=early.reduce((s,v)=>s+v,0)/early.length;if(Math.abs(ra-ea)>=5)sum+=' The gap has '+(ra>ea?'widened in the hotel\'s favor':'moved against the hotel')+' over the period ('+fmtPts(ea,0)+' → '+fmtPts(ra,0)+' avg).';}
+    if(M.kind==='share'&&vals[N-1]!=null&&csShare[N-1]!=null)sum+=' Gap = hotel share '+fmtPctPlain(vals[N-1]*100,1)+' − compset share '+fmtPctPlain(csShare[N-1]*100,1)+' = '+fmtPts(gl)+' (the compset share is derived from the report\'s "vs compset" column).';
+  } else sum+='no compset comparison available.';
+  const sd=document.createElement('div');sd.className='summary';sd.innerHTML=sum;body.appendChild(sd);
+  const gname=M.kind==='growth'?'Gap (hotel YoY − compset YoY)':'Gap (hotel share − compset share)';
+  const yoyName=M.kind==='growth'?'Hotel YoY':'Hotel share';
+  const csName=M.kind==='growth'?'Compset YoY':'Compset share (hotel share − gap)';
+  const swatch=c=>'<i style="background:'+css(c)+'"></i>';
+  const trow=(sw,label,val,klass)=>'<div class="row"><span>'+(sw?swatch(sw):'')+label+'</span><span'+(klass?' class="'+klass+'"':'')+'>'+val+'</span></div>';
+  // On share metrics the bar panel and the hotel line are the SAME series, so the hotel value is listed once.
+  const tipRows=i=>{
+    const r=['<b>'+mlong(MONTHS[i])+'</b>'];
+    if(M.kind==='growth'){
+      r.push(trow('--bar',M.label,M.fmt(vals[i])));
+      r.push(trow('--s1','Hotel YoY',fmtPct(yoy[i],1)));
+      r.push(trow('--s2','Compset YoY',fmtPct(cs[i],1)));
+      r.push(trow(null,'Gap',arrow(gaps[i])+' '+fmtPts(gaps[i]),cls(gaps[i])));
+    }else{
+      r.push(trow('--s1','Hotel share',fmtPctPlain(vals[i]==null?null:vals[i]*100,1)));
+      r.push(trow('--s2','Compset share',fmtPctPlain(lineB[i],1)));
+      r.push(trow(null,'Gap',arrow(gaps[i])+' '+fmtPts(gaps[i]),cls(gaps[i])));
+      r.push(trow(null,'Hotel share YoY',fmtPts(yoy[i])));
+    }
+    return r.join('');
+  };
+  const lgItem=(sw,label,bar,dash)=>'<span><i class="'+(bar?'bar':'')+'" style="'+(dash?'background:repeating-linear-gradient(90deg,'+css(sw)+' 0 5px,transparent 5px 9px)':'background:'+css(sw))+'"></i>'+label+'</span>';
+  const lg=document.createElement('div');lg.className='legend';
+  lg.innerHTML=(M.kind==='growth'
+      ? lgItem('--bar','Hotel '+M.label.toLowerCase(),true)+lgItem('--s1','Hotel YoY')+lgItem('--s2','Compset YoY',false,true)
+      : lgItem('--s1','Hotel sponsored share')+lgItem('--s2','Compset share',false,true))
+    +'<span><i class="bar" style="background:'+css('--good')+'"></i>/<i class="bar" style="background:'+css('--bad')+'"></i> gap: hotel ahead / behind</span>';
+  body.appendChild(lg);
+  const sec=(title,sub)=>{const d=document.createElement('div');d.className='sec';d.innerHTML='<div class="sech"><b>'+title+'</b>'+(sub?'<span>'+sub+'</span>':'')+'</div>';body.appendChild(d);return d;};
+  const PW=(body.clientWidth||900)-30, PR=92, PH=PRINTING.on?[140,164,104]:[200,220,150];
+  const s1=sec('1 · '+(M.kind==='share'?'Sponsored Listings share of OTA bookings':M.label+' on the OTA'),'hotel, by month');
+  s1.appendChild(panel({width:PW,padR:PR,height:PH[0],series:[{type:'bar',vals:vals,color:css('--bar')}],fmt:M.fmt,axisFmt:M.axis,labels:true,tipRows,showX:false,ticks:3,includeZero:false}));
+  const s2=sec('2 · Hotel vs compset',M.kind==='growth'?'year-over-year change, and the gap between them':'hotel share vs compset share (compset share = hotel share − reported gap), and the gap between them');
+  const t2=document.createElement('div');t2.className='ptitle';t2.textContent=M.kind==='growth'?'Year-over-year change: hotel vs compset':'Sponsored share: hotel vs compset';s2.appendChild(t2);
+  s2.appendChild(panel({width:PW,padR:PR,height:PH[1],series:[{type:'line',vals:lineA,color:css('--s1'),name:'Hotel',width:2.5},{type:'line',vals:lineB,color:css('--s2'),name:'Compset',dash:true}],fmt:v=>M.kind==='growth'?fmtPct(v,0):fmtPctPlain(v,1),axisFmt:v=>fmtNum(v,0)+'%',labels:true,tipRows,showX:false,ticks:4,includeZero:false}));
+  const t3=document.createElement('div');t3.className='ptitle';t3.textContent=gname+', points';s2.appendChild(t3);
+  s2.appendChild(panel({width:PW,padR:PR,height:PH[2],series:[{type:'gapbar',vals:gaps}],fmt:v=>fmtPts(v,0),axisFmt:v=>fmtNum(v,0),labels:false,tipRows,ticks:3}));
+  // table
+  // year row (one cell per year, spanning its months) above a month-only row
+  const yrs=[];MONTHS.forEach(m=>{const y=m.slice(0,4);if(yrs.length&&yrs[yrs.length-1].y===y)yrs[yrs.length-1].n++;else yrs.push({y,n:1});});
+  let tb='<table class="vals"><thead><tr class="yr"><th class="l"></th>'+yrs.map(o=>'<th colspan="'+o.n+'">'+o.y+'</th>').join('')+'</tr><tr><th class="l"></th>'+MONTHS.map(m=>'<th>'+MN[+m.slice(5,7)-1]+'</th>').join('')+'</tr></thead><tbody>';
+  tb+='<tr><td class="l">'+(M.kind==='share'?'Sponsored share':M.label)+'</td>'+vals.map(v=>'<td>'+M.fmt(v)+'</td>').join('')+'</tr>';
+  if(M.kind==='growth'){tb+='<tr><td class="l">'+yoyName+'</td>'+yoy.map(v=>'<td>'+fmtPct(v,1)+'</td>').join('')+'</tr>';
+  tb+='<tr><td class="l">'+csName+'</td>'+cs.map(v=>'<td>'+fmtPct(v,1)+'</td>').join('')+'</tr>';}
+  else{tb+='<tr><td class="l">Compset share (hotel share − gap)</td>'+lineB.map(v=>'<td>'+fmtPctPlain(v,1)+'</td>').join('')+'</tr>';
+  tb+='<tr><td class="l">Hotel share YoY (pts)</td>'+yoy.map(v=>'<td>'+fmtPts(v)+'</td>').join('')+'</tr>';}
+  tb+='<tr><td class="l">Gap (pts)</td>'+gaps.map(v=>'<td class="'+cls(v)+'">'+(v==null?'—':arrow(v)+' '+(v>0?'+':'')+fmtNum(v,1))+'</td>').join('')+'</tr>';
+  tb+='</tbody></table>';
+  const s3=sec('3 · Monthly values','the numbers behind the charts');
+  const tw=document.createElement('div');tw.style.overflow='auto';tw.innerHTML=tb;s3.appendChild(tw);
+}
+function renderMix(h,body){
+  const d=h.d;
+  const intro=document.createElement('div');intro.className='summary';intro.innerHTML='<b>Mix vs compset.</b> Each card shows the hotel\'s monthly value and, underneath, the gap to its compset (share metrics in points, length of stay and booking window in days). Blue = hotel above compset, orange = below.';body.appendChild(intro);
+  const grid=document.createElement('div');grid.className='mixgrid';body.appendChild(grid);
+  for(const mx of MIX){
+    const vals=d[mx.k]||[],cs=d[mx.k+'_cs']||[],yoy=d[mx.k+'_yoy']||[];
+    const isShare=mx.kind==='share';
+    const fv=v=>isShare?fmtPctPlain(v==null?null:v*100,1):fmtNum(v,1)+(v==null?'':' d');
+    const fg=v=>isShare?fmtPts(v):fmtDays(v);
+    const card=document.createElement('div');card.className='mix';
+    const last=vals[N-1],lg=cs[N-1];
+    const thr=isShare?1:0.5;
+    card.innerHTML='<div class="h"><b>'+mx.label+'</b></div><div class="h"><span>'+mlab(MONTHS[N-1])+': <b>'+fv(last)+'</b></span><span class="chip '+cls(lg,thr)+'">'+arrow(lg,thr)+' '+fg(lg)+' vs compset</span></div>';
+    const tipRows=i=>'<b>'+mlong(MONTHS[i])+'</b><div class="row"><span>'+mx.label+'</span><span>'+fv(vals[i])+'</span></div><div class="row"><span>YoY</span><span>'+(isShare?fmtPts(yoy[i]):fmtDays(yoy[i]))+'</span></div><div class="row"><span>vs compset</span><span class="'+cls(cs[i],thr)+'">'+arrow(cs[i],thr)+' '+fg(cs[i])+'</span></div>';
+    grid.appendChild(card);const CW=(card.clientWidth||300)-24;
+    card.appendChild(panel({width:CW,padL:40,padR:44,height:PRINTING.on?92:110,series:[{type:'line',vals:vals,color:css('--bar-ink')}],fmt:fv,axisFmt:v=>isShare?fmtNum(v*100,0)+'%':fmtNum(v,1),labels:true,tipRows,showX:false,ticks:2,includeZero:false}));
+    card.appendChild(panel({width:CW,padL:40,padR:44,height:PRINTING.on?92:110,series:[{type:'gapbar',vals:cs}],fmt:fg,axisFmt:v=>isShare?fmtNum(v,0):fmtNum(v,1),labels:false,tipRows,ticks:2,thr}));
+    const f=document.createElement('div');f.className='foot';f.textContent='Top: hotel '+(isShare?'share':'days')+'. Bottom: gap vs compset ('+(isShare?'points':'days')+').';card.appendChild(f);
+  }
+}
+
+// ---------- trend chart (share of hotels ahead, by month) ----------
+function renderTrend(list){
+  const el=$('#trendchart');el.innerHTML='';
+  const m=state.sc,M=METRICS[m];
+  $('#trendTitle').textContent='Share of hotels ahead of compset on '+M.label+', by month';
+  $('#trendHint').textContent=(M.kind==='growth'?'Percent of the filtered hotels whose '+M.label.toLowerCase()+' grew faster year-over-year than their compset (gap above +1 pt).':'Percent of the filtered hotels whose sponsored share is above their compset\'s (by more than 1 pt).')
+    +' All '+N+' months are always shown; the dashed line marks the scorecard month below.';
+  const cnt=MONTHS.map((_,i)=>{let a=0,n=0;for(const h of list){const g=gap(h,m,i);if(g==null)continue;n++;if(g>1)a++;}return [a,n];});
+  const pct=cnt.map(([a,n])=>n?a/n*100:null);
+  if(!list.length){el.innerHTML='<div class="empty">No hotels match the filters.</div>';return;}
+  el.appendChild(panel({width:el.clientWidth||900,height:210,markIndex:state.month,series:[{type:'line',vals:pct,color:css('--s1'),area:true,width:2.5}],fmt:v=>fmtNum(v,0)+'%',axisFmt:v=>fmtNum(v,0)+'%',labels:true,includeZero:false,ticks:4,tipRows:i=>'<b>'+mlong(MONTHS[i])+'</b><div class="row"><span><i style="background:'+css('--s1')+'"></i>'+M.label+'</span><span>'+(pct[i]==null?'—':fmtNum(pct[i],0)+'% ahead ('+cnt[i][0]+' of '+cnt[i][1]+')')+'</span></div>'}));
+}
+
+// ---------- main render ----------
+function render(){
+  refreshOptions();
+  const list=filtered();
+  $('#count').textContent=list.length+' of '+H.length+' hotels';
+  $('#scTitle').textContent=(state.mgr?state.mgr+"'s portfolio":'Portfolio scorecard')+' · '+METRICS[state.sc].label+' · '+mlong(MONTHS[state.month]);
+  renderTiles(list);renderTrend(list);renderTable(list);
+}
+// ---------- printable property report ----------
+function buildPrintDoc(){
+  const h=state.hotel; if(!h) return false;
+  const root=document.documentElement, prevTheme=root.getAttribute('data-theme'); root.setAttribute('data-theme','light');
+  const pd=$('#printDoc'), dB=$('#dBody');
+  pd.innerHTML='';
+  const today=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const cover=document.createElement('div');
+  cover.innerHTML='<div class="pcover"><div class="pt"><h1>OTA Compset Benchmark</h1><p>Property report</p></div>'
+    +'<div class="pright">Data through '+mlong(DATA.asOf)+'<br>Prepared '+today+'</div></div>'
+    +'<h2 class="photel">'+esc(h.name)+'</h2>'
+    +'<p class="pmeta">'+[h.code?'<b>'+esc(h.code)+'</b>':'',esc(h.brand),esc(h.market),esc(h.country),h.mgr?'Portfolio manager: '+esc(h.mgr):'' ].filter(Boolean).join(' &middot; ')+'</p>'
+    +'<p class="pnote">Each metric compares this hotel with its OTA compset over the last '+N+' months. '
+    +'The reports provide the compset as a year-over-year growth rate (and as a level gap for share metrics), so every comparison is growth versus growth. '
+    +'A gap above +1 point means the hotel outgrew its compset.</p>';
+  pd.appendChild(cover);
+  // render each metric at a page-friendly width, then capture it
+  const savedTab=state.tab, savedW=dB.style.width;
+  PRINTING.on=true; dB.style.width='740px';
+  for(const [t,label] of [['nrn','Room Nights'],['rev','Revenue'],['adr','ADR'],['spon','Sponsored'],['mix','Booking mix vs compset']]){
+    state.tab=t; renderDetail();
+    const g=document.createElement('section'); g.className='pgroup';
+    g.innerHTML='<h3 class="pgtitle">'+label+'</h3>'+dB.innerHTML;
+    pd.appendChild(g);
+  }
+  // svg2pdf only knows the PDF core fonts; pin chart text to Helvetica so it does not fall back to Times
+  pd.querySelectorAll('svg text').forEach(t=>{t.style.fontFamily='helvetica';const w=+(t.getAttribute('font-weight')||400);t.style.fontWeight=w>=600?'bold':'normal';});
+  PRINTING.on=false; dB.style.width=savedW; state.tab=savedTab;
+  if(prevTheme==null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme',prevTheme);
+  renderDetail();
+  const f=document.createElement('div'); f.className='pfoot';
+  f.textContent='Synthetic data: every hotel, brand, manager and figure is invented. OTA Compset Benchmark, a portfolio project by Libardo Lambrano.';
+  pd.appendChild(f);
+  return true;
+}
+// ---------- PDF export ----------
+// The artifact viewer runs the page in a sandboxed frame where the browser's print dialog is
+// blocked, so the report is rendered to a real PDF here (vector: the charts go through svg2pdf).
+const CDN={jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js',
+           svg2pdf:'https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.8.1/svg2pdf.umd.min.js'};
+function loadScript(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=()=>res();el.onerror=()=>rej(new Error('could not load '+src));document.head.appendChild(el);});}
+let pdfLibs=null;
+function ensurePdfLibs(){
+  if(!pdfLibs) pdfLibs=(async()=>{
+    if(!window.jspdf) await loadScript(CDN.jspdf);
+    if(!window.svg2pdf) await loadScript(CDN.svg2pdf);
+    const jsPDF=window.jspdf&&window.jspdf.jsPDF, s2p=window.svg2pdf&&(window.svg2pdf.svg2pdf||window.svg2pdf);
+    if(!jsPDF||typeof s2p!=='function') throw new Error('PDF libraries unavailable');
+    return {jsPDF,s2p};
+  })().catch(e=>{pdfLibs=null;throw e;});
+  return pdfLibs;
+}
+const PDFC={deep:[11,106,99],ink:[22,33,31],mut:[102,117,114],rule:[214,222,219],good:[44,104,176],bad:[196,82,43],grey:[126,140,137]};
+const pdfClean=t=>String(t==null?'':t).replace(/[\u25B2\u25BC]/g,'').replace(/\u2192/g,'->')
+  .replace(/[\u2212\u2013\u2014]/g,'-').replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"')
+  .replace(/[^\x00-\xFF]/g,'').replace(/\s+/g,' ').trim();
+const nodeText=(el,sep)=>{
+  if(!el) return '';
+  const hasDirect=[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());
+  if(hasDirect) return pdfClean(el.textContent);
+  return pdfClean([...el.children].map(k=>k.textContent.trim()).filter(Boolean).join(sep||' - '));
+};
+async function renderReportPdf(h){
+  const {jsPDF,s2p}=await ensurePdfLibs();
+  const doc=new jsPDF({unit:'pt',format:'letter',compress:true});
+  const M=38, W=612-2*M, BOT=792-38;
+  let y=M;
+  let noBreak=false;
+  const need=n=>{ if(noBreak) return; if(y+n>BOT){doc.addPage();y=M;} };
+  const txt=(t,o)=>{o=o||{};const size=o.size||10,color=o.color||PDFC.ink,x=o.x==null?M:o.x,maxW=o.maxW||W;
+    doc.setFont('helvetica',o.style||'normal');doc.setFontSize(size);doc.setTextColor(color[0],color[1],color[2]);
+    const lines=doc.splitTextToSize(t,maxW),lh=size*1.32;
+    lines.forEach(l=>{need(lh);y+=lh;doc.text(l,x,y);});
+    if(o.gap)y+=o.gap; };
+  const rule=()=>{need(6);y+=4;doc.setDrawColor(PDFC.rule[0],PDFC.rule[1],PDFC.rule[2]);doc.setLineWidth(.6);doc.line(M,y,M+W,y);y+=3;};
+  const drawSvg=async(sv,x,w)=>{const w0=+sv.getAttribute('width')||710,h0=+sv.getAttribute('height')||100;
+    const width=w||W, height=h0*(width/w0);
+    need(height+4);y+=3;await s2p(sv,doc,{x:x==null?M:x,y,width,height});y+=height+1;};
+  const drawTable=(tb)=>{
+    const rows=[...tb.querySelectorAll('tr')].map(r=>[...r.children].map(c=>({t:c.textContent.trim(),span:+(c.getAttribute('colspan')||1),cls:c.className})));
+    const nCols=rows[rows.length-1].length, first=96, cw=(W-first)/(nCols-1);
+    doc.setFontSize(6.6);
+    rows.forEach((cells,ri)=>{
+      const lh=10;need(lh);y+=lh;
+      let ci=0;
+      cells.forEach(c=>{
+        const isLabel=ci===0;
+        const span=c.span||1;
+        const x0=isLabel?M:first+M+(ci-1)*cw;
+        const wdt=isLabel?first:cw*span;
+        const green=/▲/.test(c.t), red=/▼/.test(c.t), t=pdfClean(c.t);
+        doc.setFont('helvetica',(ri<2||isLabel)?'bold':'normal');
+        doc.setTextColor(...(green?PDFC.good:red?PDFC.bad:PDFC.ink));
+        if(t) doc.text(t, isLabel?x0:x0+wdt-2, y-2, {align:isLabel?'left':'right',maxWidth:wdt});
+        ci+=span;
+      });
+      if(ri<2){doc.setDrawColor(PDFC.rule[0],PDFC.rule[1],PDFC.rule[2]);doc.setLineWidth(.4);doc.line(M,y+1,M+W,y+1);}
+    });
+    y+=4;
+  };
+  // ---- cover
+  const today=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  // vector mark: three bars (hotel, compset, gap), drawn rather than embedded
+  doc.setFillColor(...PDFC.deep);doc.roundedRect(M,y,24,5,1.2,1.2,'F');
+  doc.setFillColor(...PDFC.grey);doc.roundedRect(M,y+8,17,5,1.2,1.2,'F');
+  doc.setFillColor(...PDFC.good);doc.roundedRect(M,y+16,21,5,1.2,1.2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...PDFC.ink);
+  doc.text('OTA Compset Benchmark',M+34,y+10);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...PDFC.mut);
+  doc.text('Property report  ·  synthetic data',M+34,y+22);
+  doc.text('Data through '+mlong(DATA.asOf),M+W,y+18,{align:'right'});
+  doc.text('Prepared '+today,M+W,y+30,{align:'right'});
+  y+=34;
+  doc.setDrawColor(...PDFC.deep);doc.setLineWidth(1.5);doc.line(M,y,M+W,y);y+=6;
+  txt(pdfClean(h.name),{size:15,style:'bold',color:PDFC.deep});
+  txt(pdfClean([h.code,h.brand,h.market,h.country,h.mgr?'Portfolio manager: '+h.mgr:''].filter(Boolean).join('  ·  ')),{size:8.5,color:PDFC.ink});
+  txt('Each metric compares this hotel with its OTA compset over the last '+N+' months. The OTA extracts provide the compset as a year-over-year growth rate (and as a level gap for share metrics), so every comparison is growth versus growth. A gap above +1 point means the hotel outgrew its compset.',{size:7.6,color:PDFC.mut,gap:2});
+  // ---- one page per metric, walking the report we already built
+  const groups=[...$('#printDoc').querySelectorAll('.pgroup')];
+  for(let gi=0;gi<groups.length;gi++){
+    const g=groups[gi];
+    if(gi>0){doc.addPage();y=M;}
+    txt(pdfClean(g.querySelector('.pgtitle').textContent),{size:12,style:'bold',color:PDFC.deep});
+    rule();
+    const sm=g.querySelector('.summary'); if(sm) txt(nodeText(sm),{size:8.4,gap:1});
+    const lgd=g.querySelector('.legend'); if(lgd) txt(nodeText(lgd,'   ·   '),{size:7.4,color:PDFC.mut,gap:1});
+    for(const sec of g.querySelectorAll('.sec')){
+      const head=sec.querySelector('.sech');
+      if(head){txt(nodeText(head,'  -  '),{size:9,style:'bold',color:PDFC.deep,gap:0});}
+      for(const el of sec.children){
+        if(el.classList.contains('ptitle')) txt(pdfClean(el.textContent),{size:7,color:PDFC.mut});
+        else if(el.tagName==='svg') await drawSvg(el);
+        else { const tb=el.querySelector&&el.querySelector('table.vals'); if(tb) drawTable(tb); }
+      }
+    }
+    // booking mix: two cards per row
+    const cards=[...g.querySelectorAll('.mix')];
+    for(let i=0;i<cards.length;i+=2){
+      const pair=cards.slice(i,i+2), colW=(W-14)/2;
+      // measure the row first so a card is never split across pages
+      let rowH=0;
+      pair.forEach(c=>{ let hh=24;
+        c.querySelectorAll('svg.chart').forEach(sv=>{const w0=+sv.getAttribute('width')||710,h0=+sv.getAttribute('height')||100;hh+=h0*(colW/w0)+4;});
+        rowH=Math.max(rowH,hh); });
+      need(rowH+10);
+      const startY=y; let maxY=y;
+      noBreak=true;
+      for(let k=0;k<pair.length;k++){
+        y=startY; const x=M+k*(colW+14); const c=pair[k];
+        const hs=[...c.querySelectorAll('.h')].map(e=>nodeText(e,'   '));
+        txt(hs[0]||'',{size:8.6,style:'bold',color:PDFC.deep,x,maxW:colW});
+        if(hs[1]) txt(hs[1],{size:7.2,color:PDFC.ink,x,maxW:colW});
+        for(const sv of c.querySelectorAll('svg.chart')) await drawSvg(sv,x,colW);
+        maxY=Math.max(maxY,y);
+      }
+      noBreak=false;
+      y=maxY+10;
+    }
+  }
+  // ---- footer on every page
+  const n=doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(6.2);doc.setTextColor(...PDFC.mut);
+    doc.setDrawColor(PDFC.rule[0],PDFC.rule[1],PDFC.rule[2]);doc.setLineWidth(.4);doc.line(M,768,M+W,768);
+    doc.text('Synthetic data: every hotel, brand, manager and figure in this report is invented.',M,778,{maxWidth:W-70});
+    doc.text('OTA Compset Benchmark  ·  portfolio project by Libardo Lambrano  ·  github.com/llambrano',M,786,{maxWidth:W-70});
+    doc.setFont('helvetica','bold');doc.text(i+' / '+n,M+W,786,{align:'right'});}
+  return doc.output('blob');
+}
+function reportFilename(h){
+  return ('OTA Compset Benchmark - '+(h.code?h.code+' - ':'')+h.name+' - '+mlab(MONTHS[N-1])).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim()+'.pdf';
+}
+async function downloadReport(){
+  const h=state.hotel; if(!h) return;
+  const btn=PDFBTN, label=btn.textContent;
+  btn.disabled=true; btn.textContent='Preparing…';
+  try{
+    buildPrintDoc();
+    const blob=await renderReportPdf(h);
+    const dl=window.claude&&window.claude.use? await window.claude.use('downloads').catch(()=>null) : null;
+    if(dl){ await dl.save({filename:reportFilename(h),data:blob}); }
+    else { const a=document.createElement('a');const u=URL.createObjectURL(blob);a.href=u;a.download=reportFilename(h);document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000); }
+  }catch(err){
+    if(err&&err.code==='declined') { /* viewer said no */ }
+    else { try{ window.print(); }catch(e){} }
+  }finally{ $('#printDoc').innerHTML=''; btn.disabled=false; btn.textContent=label; }
+}
+PDFBTN.addEventListener('click',downloadReport);
+window.addEventListener('afterprint',()=>{$('#printDoc').innerHTML='';});
+
+// about
+$('#aboutBtn').addEventListener('click',()=>{$('#about').style.display='flex';});
+$('#aboutClose').addEventListener('click',()=>{$('#about').style.display='none';});
+$('#about').addEventListener('click',e=>{if(e.target.id==='about')$('#about').style.display='none';});
+$('#aboutMissing').textContent='Hotels on this page: '+H.length+'. Assigned to a portfolio manager: '+H.filter(h=>h.mgr).length+', across '+mgrs.length+' managers. Hotels without a manager appear under All managers.';
+// theme: system -> light -> dark; charts read the tokens at draw time, so redraw on any change
+const THEMES=['system','light','dark'];
+function themeNow(){return document.documentElement.getAttribute('data-theme')||'system';}
+function themeLabel(){const t=themeNow();$('#themeBtn').textContent=t==='system'?'Auto theme':t==='light'?'Light theme':'Dark theme';}
+function redraw(){if(state.hotel)renderDetail();else render();}
+$('#themeBtn').addEventListener('click',()=>{const nx=THEMES[(THEMES.indexOf(themeNow())+1)%3];if(nx==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',nx);try{localStorage.setItem('ocb-theme',nx);}catch(e){}});
+try{const t=localStorage.getItem('ocb-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}
+new MutationObserver(()=>{themeLabel();if(!PRINTING.on)redraw();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
+themeLabel();
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(state.hotel)renderDetail();else render();},150);});
+render();
+const m0=location.hash.match(/^#h(\d+)$/);if(m0){state.hotel=H.find(h=>h.id===m0[1])||null;fillHotelList();}
+renderDetail();
+})();
+</script>
+</body>
+</html>

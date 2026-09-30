@@ -1,0 +1,11 @@
+# real OTA extracts and anything built from them never go in this repo
+raw/
+config/hotel_master.csv
+ota_benchmark.json
+ota-compset-benchmark.html
+*.xlsx
+*.xls
+*.csv
+!config/*.example.csv
+__pycache__/
+.DS_Store
